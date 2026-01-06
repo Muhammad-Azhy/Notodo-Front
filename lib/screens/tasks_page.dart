@@ -27,14 +27,14 @@ class _TasksPageState extends State<TasksPage> {
   Future<void> _loadTasks() async {
     setState(() => loading = true);
     try {
-      final fetchedTasks = await api.getTasks();
-      tasks = fetchedTasks.map((t) {
+      final fetched = await api.getTasks();
+      tasks = fetched.map<Map<String, dynamic>>((t) {
         return {
           'id': t['id'],
           'title': t['title'] ?? '',
           'done': t['done'] == true || t['done'] == 1,
-          'problem_id': t['problem_id'] ?? 0,
-          'problem_title': t['problem_title'] ?? 'Unknown',
+          'problem_id': t['problem_id'],
+          'problem_title': t['problem_title'] ?? 'None',
         };
       }).toList();
     } catch (e) {
@@ -51,7 +51,7 @@ class _TasksPageState extends State<TasksPage> {
 
     if (selectedProblem != 'All') {
       filtered = filtered
-          .where((t) => (t['problem_title'] ?? 'Unknown') == selectedProblem)
+          .where((t) => (t['problem_title'] ?? 'None') == selectedProblem)
           .toList();
     }
 
@@ -70,14 +70,10 @@ class _TasksPageState extends State<TasksPage> {
 
   Future<void> _addTask() async {
     String title = '';
-    int selectedProblemId = 0;
-    String selectedProblemTitle = '';
+    int? selectedProblemId;
+    String selectedProblemTitle = 'None';
 
     final problems = await api.getProblems();
-    if (problems.isEmpty) return;
-
-    selectedProblemId = problems.first['id'] ?? 0;
-    selectedProblemTitle = problems.first['title'] ?? 'Unknown';
 
     showDialog(
       context: context,
@@ -91,23 +87,24 @@ class _TasksPageState extends State<TasksPage> {
               onChanged: (v) => title = v,
             ),
             const SizedBox(height: 8),
-            DropdownButtonFormField<int>(
+            DropdownButtonFormField<int?>(
               value: selectedProblemId,
-              items: problems
-                  .map<DropdownMenuItem<int>>(
-                    (p) => DropdownMenuItem<int>(
-                      value: p['id'] ?? 0,
-                      child: Text(p['title'] ?? 'Unknown'),
-                    ),
-                  )
-                  .toList(),
+              decoration: const InputDecoration(labelText: 'Problem'),
+              items: [
+                const DropdownMenuItem<int?>(value: null, child: Text('None')),
+                ...problems.map<DropdownMenuItem<int?>>(
+                  (p) => DropdownMenuItem<int?>(
+                    value: p['id'],
+                    child: Text(p['title'] ?? 'Unknown'),
+                  ),
+                ),
+              ],
               onChanged: (val) {
-                if (val != null) {
-                  selectedProblemId = val;
-                  selectedProblemTitle =
-                      problems.firstWhere((p) => p['id'] == val)['title'] ??
-                      'Unknown';
-                }
+                selectedProblemId = val;
+                selectedProblemTitle = val == null
+                    ? 'None'
+                    : problems.firstWhere((p) => p['id'] == val)['title'] ??
+                          'Unknown';
               },
             ),
           ],
@@ -121,17 +118,16 @@ class _TasksPageState extends State<TasksPage> {
             onPressed: () async {
               if (title.isEmpty) return;
 
-              final created = await api.createTask(title, selectedProblemId);
+              final created = await api.createTask(
+                title,
+                selectedProblemId ?? 0,
+              );
 
-              // Normalize fields
               created['title'] = created['title'] ?? '';
               created['done'] = created['done'] == true || created['done'] == 1;
               created['problem_title'] = selectedProblemTitle;
 
-              setState(() {
-                tasks.insert(0, created);
-              });
-
+              setState(() => tasks.insert(0, created));
               Navigator.pop(context);
             },
             child: const Text('Add'),
@@ -142,14 +138,14 @@ class _TasksPageState extends State<TasksPage> {
   }
 
   Future<void> _editTask(Map<String, dynamic> task) async {
-    String updatedTitle = task['title'] ?? '';
+    String updatedTitle = task['title'];
 
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Edit Task'),
         content: TextField(
-          controller: TextEditingController(text: task['title'] ?? ''),
+          controller: TextEditingController(text: task['title']),
           onChanged: (v) => updatedTitle = v,
         ),
         actions: [
@@ -164,10 +160,9 @@ class _TasksPageState extends State<TasksPage> {
                 title: updatedTitle,
               );
 
-              // Normalize
               updated['title'] = updated['title'] ?? '';
               updated['done'] = updated['done'] == true || updated['done'] == 1;
-              updated['problem_title'] = task['problem_title'] ?? 'Unknown';
+              updated['problem_title'] = task['problem_title'] ?? 'None';
 
               final index = tasks.indexWhere((t) => t['id'] == updated['id']);
               if (index != -1) setState(() => tasks[index] = updated);
@@ -188,10 +183,10 @@ class _TasksPageState extends State<TasksPage> {
     });
   }
 
-  // ✅ Keep original toggle logic like before
+  // ⛔️ untouched toggle logic (your original behavior)
   void _toggleComplete(Map<String, dynamic> task) {
     setState(() {
-      task['done'] = !(task['done'] as bool? ?? false);
+      task['done'] = !(task['done'] as bool);
     });
     api.updateTask(task['id'], done: task['done'], title: task['title']);
   }
@@ -207,7 +202,7 @@ class _TasksPageState extends State<TasksPage> {
 
     final problemTitles = <String>{
       'All',
-      ...tasks.map((t) => t['problem_title'] ?? 'Unknown'),
+      ...tasks.map((t) => t['problem_title'] ?? 'None'),
     }.toList();
 
     return Scaffold(
@@ -239,15 +234,14 @@ class _TasksPageState extends State<TasksPage> {
                       DropdownButton<String>(
                         value: selectedProblem,
                         items: problemTitles
-                            .map<DropdownMenuItem<String>>(
-                              (String p) => DropdownMenuItem<String>(
-                                value: p,
-                                child: Text(p),
-                              ),
+                            .map(
+                              (p) => DropdownMenuItem(value: p, child: Text(p)),
                             )
                             .toList(),
-                        onChanged: (String? v) {
-                          if (v != null) setState(() => selectedProblem = v);
+                        onChanged: (v) {
+                          if (v != null) {
+                            setState(() => selectedProblem = v);
+                          }
                         },
                       ),
                     ],
@@ -295,12 +289,12 @@ class _TasksPageState extends State<TasksPage> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
         title: Text(
-          task['title'] ?? '',
+          task['title'],
           style: TextStyle(
             decoration: task['done'] ? TextDecoration.lineThrough : null,
           ),
         ),
-        subtitle: Text(task['problem_title'] ?? 'Unknown'),
+        subtitle: Text(task['problem_title'] ?? 'None'),
         leading: Checkbox(
           value: task['done'],
           onChanged: (_) => _toggleComplete(task),

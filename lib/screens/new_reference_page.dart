@@ -20,8 +20,13 @@ class ProblemItem {
 
 class NewReferencePage extends StatefulWidget {
   final String type; // "text" | "image"
+  final int? initialProblemId; // 👈 ADD
 
-  const NewReferencePage({super.key, required this.type});
+  const NewReferencePage({
+    super.key,
+    required this.type,
+    this.initialProblemId,
+  });
 
   @override
   State<NewReferencePage> createState() => _NewReferencePageState();
@@ -43,6 +48,7 @@ class _NewReferencePageState extends State<NewReferencePage> {
   @override
   void initState() {
     super.initState();
+    _linkedProblemId = widget.initialProblemId;
     _loadProblems();
   }
 
@@ -202,24 +208,22 @@ class _NewReferencePageState extends State<NewReferencePage> {
               ),
             ),
             const SizedBox(height: 16),
-            DropdownButtonFormField<int>(
-              value: _linkedProblemId,
+            DropdownButtonFormField<int?>(
+              initialValue: _linkedProblemId,
               decoration: const InputDecoration(
                 labelText: "Link to Problem (optional)",
                 border: OutlineInputBorder(),
               ),
-              items: loadingProblems
-                  ? []
-                  : _allProblems
-                        .map(
-                          (p) => DropdownMenuItem<int>(
-                            value: p.id,
-                            child: Text(p.title),
-                          ),
-                        )
-                        .toList(),
+              items: [
+                const DropdownMenuItem<int?>(value: null, child: Text('None')),
+                ..._allProblems.map(
+                  (p) =>
+                      DropdownMenuItem<int?>(value: p.id, child: Text(p.title)),
+                ),
+              ],
               onChanged: (val) => setState(() => _linkedProblemId = val),
             ),
+
             const SizedBox(height: 16),
             Expanded(child: _buildContent()),
             const SizedBox(height: 16),

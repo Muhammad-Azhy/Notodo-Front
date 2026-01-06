@@ -58,8 +58,9 @@ class _ProblemDetailsPageState extends State<ProblemDetailsPage> {
         builder: (_) => NewReferencePage(
           type: type,
           // initialType: type,
-          // // initialProblem: widget.problemId.toString(),
-          // // initialProblemId: widget.problemId,
+          // initialProblem: widget.problemId.toString(),
+          // initialProblemId: widget.problemId,
+          initialProblemId: widget.problemId,
           // // allProblems: [widget.problemId.toString()],
           // onCreate: (ref) {
           //   setState(() => _references.add(ref)); // <-- add new reference here

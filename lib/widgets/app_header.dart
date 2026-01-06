@@ -38,7 +38,7 @@ class AppHeader extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                "${_greeting()}, $username 👋",
+                "${_greeting()}",
                 style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w600,
                 ),
